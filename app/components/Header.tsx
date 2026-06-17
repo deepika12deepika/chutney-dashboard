@@ -1,57 +1,72 @@
 'use client';
 
 import React from 'react';
+import { UserProfile } from '../types/credential';
 
-const Header: React.FC = () => {
+interface HeaderProps {
+  currentUser: UserProfile;
+}
+
+const Header: React.FC<HeaderProps> = ({ currentUser }) => {
   return (
-    <div className="bg-gradient-to-r from-[#0f1824] to-[#1a2332] border-b border-[#2a3f5f] px-8 py-4 flex items-center justify-between shadow-md">
-      {/* Left Section */}
+    <header className="h-16 flex items-center justify-between px-8 bg-[#050912] border-b border-[#15233c] shrink-0 select-none relative z-20">
+      {/* Left side: clock and greeting */}
+      <div className="flex items-center gap-2 text-slate-300">
+        <svg className="w-[18px] h-[18px] text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10" />
+          <polyline points="12 6 12 12 16 14" />
+        </svg>
+        <span className="text-[13.5px] font-medium tracking-[0.2px] text-slate-300">
+          Good Evening, {currentUser.name}
+        </span>
+      </div>
+
+      {/* Right side: Wallet and control icons */}
       <div className="flex items-center gap-4">
-        <button className="text-gray-300 hover:text-white transition-colors p-2">
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+        {/* Wallet balance */}
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-[#171730] border border-[#2d2054] rounded-full shadow-[0_0_12px_rgba(139,92,246,0.1)] hover:bg-[#1e1e3f] transition-all duration-150 cursor-pointer">
+          <svg className="w-4 h-4 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="2" y="4" width="20" height="16" rx="2" />
+            <path d="M16 8h.01M22 12h-4a2 2 0 0 0-2 2v0a2 2 0 0 0 2 2h4" />
+          </svg>
+          <span className="text-[11.5px] font-bold tracking-wider text-purple-300 uppercase">Wallet: 0</span>
+        </div>
+
+        {/* Theme toggle icon (Sun) */}
+        <button className="text-slate-400 hover:text-white transition-colors cursor-pointer p-2 rounded-lg hover:bg-slate-900/40">
+          <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="5" />
+            <line x1="12" y1="1" x2="12" y2="3" />
+            <line x1="12" y1="21" x2="12" y2="23" />
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+            <line x1="1" y1="12" x2="3" y2="12" />
+            <line x1="21" y1="12" x2="23" y2="12" />
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
           </svg>
         </button>
-        <div className="flex items-center gap-2 text-gray-300">
-          <svg className="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-            <circle cx="10" cy="10" r="8" />
+
+        {/* Notifications bell icon with badge */}
+        <button className="text-slate-400 hover:text-white transition-colors cursor-pointer p-2 rounded-lg hover:bg-slate-900/40 relative">
+          <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
           </svg>
-          <span className="font-medium">Good Evening, Abin</span>
-        </div>
+          {/* Orange alert notification badge dot */}
+          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-orange-500 rounded-full ring-2 ring-[#050912]" />
+        </button>
+
+        {/* Logout exit door icon */}
+        <button className="text-slate-400 hover:text-white transition-colors cursor-pointer p-2 rounded-lg hover:bg-slate-900/40">
+          <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+        </button>
       </div>
-
-      {/* Right Section */}
-      <div className="flex items-center gap-6">
-        {/* Wallet */}
-        <div className="flex items-center gap-2 px-4 py-2 bg-[#1a2f4f] rounded-lg">
-          <span className="text-purple-400 text-sm font-semibold">💎 WALLET: 0</span>
-        </div>
-
-        {/* Icons */}
-        <button className="text-gray-300 hover:text-yellow-400 transition-colors p-2">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m6.364 1.636l-.707.707M21 12h-1m-1.636 6.364l-.707-.707M12 21v1m-6.364-1.636l.707-.707M3 12h1m1.636-6.364l.707.707" />
-          </svg>
-        </button>
-
-        <button className="text-gray-300 hover:text-white transition-colors p-2">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-          </svg>
-        </button>
-
-        <button className="text-gray-300 hover:text-white transition-colors p-2">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.5 1.5H3.75A2.25 2.25 0 001.5 3.75v16.5A2.25 2.25 0 003.75 22.5h16.5a2.25 2.25 0 002.25-2.25V13.5" />
-          </svg>
-        </button>
-
-        {/* User Avatar */}
-        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center text-white font-bold cursor-pointer hover:shadow-lg transition-shadow">
-          M
-        </div>
-      </div>
-    </div>
+    </header>
   );
 };
 

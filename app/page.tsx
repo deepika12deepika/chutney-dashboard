@@ -1,206 +1,128 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Todo } from './types/todo';
-import TodoForm from './components/TodoForm';
-import TodoItem from './components/TodoItem';
+import Sidebar from './components/Sidebar';
+import Header from './components/Header';
+import CredentialsPage from './components/CredentialsPage';
+import { Credential, UserProfile } from './types/credential';
+
+const USER_PROFILES: UserProfile[] = [
+  { name: 'Sandhya', role: 'Admin', password: 'sandhya123' },
+  { name: 'Abin', role: 'Manager', password: 'abin123' },
+  { name: 'Guest', role: 'Viewer', password: 'guest123' }
+];
 
 export default function Home() {
-  const [todos, setTodos] = useState<Todo[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
-  const [clientFilter, setClientFilter] = useState<string>('all');
+  const [credentials, setCredentials] = useState<Credential[]>([]);
+  const [activeTab, setActiveTab] = useState('credentials');
   const [isLoading, setIsLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<UserProfile>(USER_PROFILES[0]);
 
+  // Load from localStorage on mount
   useEffect(() => {
-    const savedTodos = localStorage.getItem('dashboard_credentials');
-    if (savedTodos) {
-      try { setTodos(JSON.parse(savedTodos)); } catch (e) { console.error(e); }
+    // Load credentials
+    const savedCreds = localStorage.getItem('dashboard_credentials');
+    if (savedCreds) {
+      try {
+        setCredentials(JSON.parse(savedCreds));
+      } catch (e) {
+        console.error(e);
+      }
     }
+
+    // Load active user
+    const savedUser = localStorage.getItem('dashboard_current_user');
+    if (savedUser) {
+      try {
+        const parsed = JSON.parse(savedUser);
+        const match = USER_PROFILES.find(u => u.name === parsed.name);
+        if (match) {
+          setCurrentUser(match);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
     setIsLoading(false);
   }, []);
 
+  // Save to localStorage when credentials change
   useEffect(() => {
     if (!isLoading) {
-      localStorage.setItem('dashboard_credentials', JSON.stringify(todos));
+      localStorage.setItem('dashboard_credentials', JSON.stringify(credentials));
     }
-  }, [todos, isLoading]);
+  }, [credentials, isLoading]);
 
-  const handleAddTodo = (title: string, priority: 'low' | 'medium' | 'high', dueDate: string, platform: string, clientName: string) => {
-    const newCredential: Todo = {
+  const handleSelectUser = (user: UserProfile) => {
+    setCurrentUser(user);
+    localStorage.setItem('dashboard_current_user', JSON.stringify(user));
+  };
+
+  const handleAddCredential = (newCred: Omit<Credential, 'id' | 'createdAt'>) => {
+    const cred: Credential = {
+      ...newCred,
       id: Date.now().toString(),
-      title,
-      completed: false,
-      createdAt: new Date().toISOString(),
-      priority,
-      dueDate: dueDate || undefined,
-      platform,
-      clientName
+      createdAt: new Date().toISOString()
     };
-    setTodos((prev) => [newCredential, ...prev]);
+    setCredentials(prev => [cred, ...prev]);
   };
 
-  const handleToggleComplete = (id: string) => {
-    setTodos((prev) => prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t)));
+  const handleUpdateCredential = (id: string, updatedFields: Partial<Credential>) => {
+    setCredentials(prev => prev.map(c => c.id === id ? { ...c, ...updatedFields } : c));
   };
 
-  const handleDeleteTodo = (id: string) => {
-    setTodos((prev) => prev.filter((t) => t.id !== id));
+  const handleDeleteCredential = (id: string) => {
+    setCredentials(prev => prev.filter(c => c.id !== id));
   };
-
-  const handleEditTodo = (id: string, newTitle: string) => {
-    setTodos((prev) => prev.map((t) => (t.id === id ? { ...t, title: newTitle } : t)));
-  };
-
-  const totalCredentials = todos.length;
-  const activeCredentials = todos.filter(t => !t.completed).length;
-  const uniqueClients = Array.from(new Set(todos.map(t => t.clientName))).length;
-  const uniquePlatforms = Array.from(new Set(todos.map(t => t.platform))).length;
-
-  const filteredTodos = todos.filter((todo) => {
-    const matchesSearch = todo.title.toLowerCase().includes(searchQuery.toLowerCase()) || todo.platform.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = filter === 'all' || (filter === 'completed' && todo.completed) || (filter === 'pending' && !todo.completed);
-    const matchesClient = clientFilter === 'all' || todo.clientName === clientFilter;
-    return matchesSearch && matchesFilter && matchesClient;
-  });
 
   return (
-    <div className="flex min-h-screen bg-[#090d16] text-slate-100 font-sans">
-      
-      {/* SIDEBAR NAVIGATION */}
-      <aside className="w-64 hidden lg:flex flex-col bg-[#0d1527] border-r border-slate-800 p-6 space-y-6">
-        <div className="flex items-center space-x-2">
-          <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-white">C</div>
-          <span className="text-lg font-bold tracking-wider text-white">Chutney App</span>
-        </div>
-        <nav className="space-y-1 flex-1">
-          <a href="#" className="flex items-center px-3 py-2 text-sm font-medium rounded-lg bg-blue-600/10 text-blue-400">📊 Dashboard</a>
-          <a href="#" className="flex items-center px-3 py-2 text-sm font-medium rounded-lg text-slate-400 hover:bg-slate-800/50 hover:text-slate-200">📁 Projects</a>
-          <a href="#" className="flex items-center px-3 py-2 text-sm font-medium rounded-lg text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"> Task</a>
-          <a href="#" className="flex items-center px-3 py-2 text-sm font-medium rounded-lg text-slate-400 hover:bg-slate-800/50 hover:text-slate-200">👥 User storage</a>
-          <a href="#" className="flex items-center px-3 py-2 text-sm font-medium rounded-lg text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"> Chat</a>
-          <a href="#" className="flex items-center px-3 py-2 text-sm font-medium rounded-lg text-slate-400 hover:bg-slate-800/50 hover:text-slate-200">🔑 Social setup</a>
-          <a href="#" className="flex items-center px-3 py-2 text-sm font-medium rounded-lg text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"> Google calendar</a>
-          <a href="#" className="flex items-center px-3 py-2 text-sm font-medium rounded-lg text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"> Daily News</a>
-          <a href="#" className="flex items-center px-3 py-2 text-sm font-medium rounded-lg text-slate-400 hover:bg-slate-800/50 hover:text-slate-200">🔑 Crendentials</a>
-          <a href="#" className="flex items-center px-3 py-2 text-sm font-medium rounded-lg text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"> Attendence</a>
-          <a href="#" className="flex items-center px-3 py-2 text-sm font-medium rounded-lg text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"> Requests</a>
-          <a href="#" className="flex items-center px-3 py-2 text-sm font-medium rounded-lg text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"> Clients</a>
-        </nav>
-      </aside>
+    <div className="flex h-screen bg-[#060814] overflow-hidden font-sans antialiased text-slate-200">
+      {/* Sidebar Navigation */}
+      <Sidebar 
+        activeItem={activeTab} 
+        onSelectItem={setActiveTab} 
+        currentUser={currentUser}
+        userProfiles={USER_PROFILES}
+        onSelectUser={handleSelectUser}
+      />
 
-      {/* MAIN CONTENT AREA */}
-      <main className="flex-1 px-6 lg:px-10 py-8 overflow-y-auto">
-        <header className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 pb-4 border-b border-slate-800 gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-white">Credentials Management</h1>
-            <p className="text-xs text-slate-400 mt-1">Securely manage all client platform credentials</p>
-          </div>
-        </header>
+      {/* Main dashboard content panel */}
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
+        {/* Top Header */}
+        <Header currentUser={currentUser} />
 
-        {/* 4 CARDS MATRIX GRID */}
-        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="p-4 bg-purple-950/40 border border-purple-500/20 rounded-xl flex justify-between items-center">
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-purple-400">Total Credentials</p>
-              <h3 className="text-3xl font-bold mt-1 text-white">{totalCredentials}</h3>
+        {/* Dynamic page render based on selected sidebar item */}
+        {activeTab === 'credentials' ? (
+          <CredentialsPage
+            credentials={credentials}
+            currentUser={currentUser}
+            onAddCredential={handleAddCredential}
+            onUpdateCredential={handleUpdateCredential}
+            onDeleteCredential={handleDeleteCredential}
+          />
+        ) : (
+          /* Fallback view for other dashboard screens */
+          <div className="flex-1 bg-[#060814] p-8 text-slate-100 flex flex-col items-center justify-center select-none">
+            <div className="w-16 h-16 rounded-2xl bg-[#09101f] border border-[#16253d] flex items-center justify-center text-2xl mb-4 shadow-lg">
+              {activeTab === 'dashboard' ? '📊' :
+               activeTab === 'projects' ? '📁' :
+               activeTab === 'tasks' ? '✓' :
+               activeTab === 'storage' ? '💾' :
+               activeTab === 'chat' ? '💬' :
+               activeTab === 'social' ? '🌐' :
+               activeTab === 'calendar' ? '📅' :
+               activeTab === 'news' ? '📰' :
+               activeTab === 'attendance' ? '⏱' :
+               activeTab === 'requests' ? '📬' : '👥'}
             </div>
-            <span className="text-2xl bg-purple-500/10 p-2 rounded-lg">🔑</span>
+            <h2 className="text-[17px] font-bold text-white capitalize leading-snug">{activeTab} Page</h2>
+            <p className="text-slate-500 text-[12px] mt-1.5 max-w-xs text-center leading-relaxed">
+              This screen is under active development. Click on <strong className="text-slate-300">"Credentials"</strong> in the left menu to manage platform passwords.
+            </p>
           </div>
-
-          <div className="p-4 bg-emerald-950/40 border border-emerald-500/20 rounded-xl flex justify-between items-center">
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-400">Active</p>
-              <h3 className="text-3xl font-bold mt-1 text-white">{activeCredentials}</h3>
-            </div>
-            <span className="text-2xl bg-emerald-500/10 p-2 rounded-lg">✅</span>
-          </div>
-
-          <div className="p-4 bg-blue-950/40 border border-blue-500/20 rounded-xl flex justify-between items-center">
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-blue-400">Clients</p>
-              <h3 className="text-3xl font-bold mt-1 text-white">{uniqueClients}</h3>
-            </div>
-            <span className="text-2xl bg-blue-500/10 p-2 rounded-lg">💼</span>
-          </div>
-
-          <div className="p-4 bg-orange-950/40 border border-orange-500/20 rounded-xl flex justify-between items-center">
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-orange-400">Platforms</p>
-              <h3 className="text-3xl font-bold mt-1 text-white">{uniquePlatforms}</h3>
-            </div>
-            <span className="text-2xl bg-orange-500/10 p-2 rounded-lg">🌐</span>
-          </div>
-        </section>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-6">
-            
-            {/* FILTERS */}
-            <div className="bg-[#0d1527] p-4 rounded-xl border border-slate-800 space-y-3">
-              <input
-                type="text"
-                placeholder="🔍 Search credentials..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-3 py-2 text-sm border rounded-lg bg-slate-900 border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-
-              <div className="flex flex-wrap sm:flex-nowrap gap-2 pt-2 border-t border-slate-800">
-                <div className="flex bg-slate-900 p-1 rounded-lg border border-slate-800">
-                  {(['all', 'pending', 'completed'] as const).map((type) => (
-                    <button
-                      key={type}
-                      onClick={() => setFilter(type)}
-                      className={`text-xs px-3 py-1.5 font-medium rounded-md capitalize transition-all ${filter === type ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
-                    >
-                      {type === 'pending' ? 'Active' : type === 'completed' ? 'Inactive' : 'All'}
-                    </button>
-                  ))}
-                </div>
-
-                <select
-                  value={clientFilter}
-                  onChange={(e) => setClientFilter(e.target.value)}
-                  className="px-3 py-1.5 text-xs bg-slate-900 border border-slate-800 rounded-lg text-slate-300 focus:outline-none"
-                >
-                  <option value="all">All Clients</option>
-                  <option value="Client A">TechCorp</option>
-                  <option value="Client B">DeltaAgency</option>
-                  <option value="Client C">Personal Project</option>
-                </select>
-              </div>
-            </div>
-
-            {/* LIST STREAM */}
-            <div className="space-y-3">
-              {filteredTodos.length > 0 ? (
-                filteredTodos.map((todo) => (
-                  <TodoItem
-                    key={todo.id}
-                    todo={todo}
-                    onToggleComplete={handleToggleComplete}
-                    onDelete={handleDeleteTodo}
-                    onEdit={handleEditTodo}
-                  />
-                ))
-              ) : (
-                <div className="text-center py-16 border-2 border-dashed rounded-xl border-slate-800 bg-[#0d1527]/30">
-                  <span className="text-4xl block mb-3">🔑</span>
-                  <h3 className="text-sm font-semibold text-slate-300">No credentials found</h3>
-                  <p className="text-xs text-slate-500 mt-1">Try adjusting your filters or add new credentials.</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* FORM AREA */}
-          <div className="lg:col-span-1">
-            <TodoForm onAddTodo={handleAddTodo} />
-          </div>
-        </div>
-
-      </main>
+        )}
+      </div>
     </div>
   );
 }
