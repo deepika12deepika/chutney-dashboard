@@ -50,7 +50,7 @@ body {
   right: -1px;
   bottom: -1px;
   border-radius: 8px;
-  background: linear-gradient(90deg, #2563eb, #7c3aed, #ef4444, #06b6d4, #2563eb);
+  background: linear-gradient(90deg, #000103, #fcfcfc, #000103, #fcfcfc);
   background-size: 400% 400%;
   animation: move-border 3s linear infinite;
   z-index: -1;
