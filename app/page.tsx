@@ -51,7 +51,8 @@ export default function Home() {
     );
   }
 
-  const isAdmin = currentUser.role === 'Admin' || currentUser.role === 'Manager';
+  const isAdmin = currentUser.role === 'Admin';
+  // const isAdmin = currentUser.role === 'Admin' || currentUser.role === 'Manager';
 
   const renderPage = () => {
     switch (activeTab) {

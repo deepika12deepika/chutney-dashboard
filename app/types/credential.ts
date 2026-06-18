@@ -48,7 +48,8 @@ export interface Permission {
   userEmail: string;
   categoryId: number;
   categoryName: string;
-  createdAt: string;
+  // createdAt: string;
+  createdAt?: string;
 }
 
 // ─── Legacy alias (kept for backward compatibility with older components) ───

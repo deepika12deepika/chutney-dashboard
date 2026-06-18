@@ -48,8 +48,9 @@ const CredentialsPage: React.FC<CredentialsPageProps> = ({ currentUser }) => {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastType, setToastType] = useState<'success' | 'error'>('success');
 
-  const isAdmin = currentUser.role === 'Admin' || currentUser.role === 'Manager';
-
+  const isAdmin = currentUser.role === 'Admin';
+  // const isAdmin = currentUser.role === 'Admin' || currentUser.role === 'Manager';
+  
   const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
     setToastMessage(msg);
     setToastType(type);

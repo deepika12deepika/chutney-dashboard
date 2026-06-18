@@ -10,7 +10,18 @@ export async function GET() {
     const cookieStore = await cookies();
     const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
 
-    if (!session.isLoggedIn || session.role !== 'Admin') {
+    // if (!session.isLoggedIn || session.role !== 'Admin') {
+    if (!session.isLoggedIn) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Query DB for user's actual role to prevent stale session 403s
+    const dbUser = await sql`
+      SELECT role FROM users WHERE id = ${session.userId} LIMIT 1
+    `;
+    const userRole = dbUser[0]?.role || session.role;
+
+    if (userRole !== 'Admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
@@ -21,12 +32,11 @@ export async function GET() {
         u.name AS "userName",
         u.email AS "userEmail",
         up.category_id AS "categoryId",
-        pc.name AS "categoryName",
-        up.created_at AS "createdAt"
+        pc.category_name AS "categoryName"
       FROM user_permissions up
       JOIN users u ON up.user_id = u.id
       JOIN password_categories pc ON up.category_id = pc.id
-      ORDER BY u.name, pc.name
+      ORDER BY u.name, pc.category_name
     `;
 
     return NextResponse.json({ permissions });
@@ -42,7 +52,17 @@ export async function POST(request: Request) {
     const cookieStore = await cookies();
     const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
 
-    if (!session.isLoggedIn || session.role !== 'Admin') {
+    if (!session.isLoggedIn) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Query DB for user's actual role to prevent stale session 403s
+    const dbUser = await sql`
+      SELECT role FROM users WHERE id = ${session.userId} LIMIT 1
+    `;
+    const userRole = dbUser[0]?.role || session.role;
+
+    if (userRole !== 'Admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
@@ -52,15 +72,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'userId and categoryId are required' }, { status: 400 });
     }
 
-    // Upsert to prevent duplicate permissions
+    // Manual check to prevent duplicates since there is no unique constraint
+    const existing = await sql`
+      SELECT id, user_id AS "userId", category_id AS "categoryId"
+      FROM user_permissions
+      WHERE user_id = ${userId} AND category_id = ${categoryId}
+      LIMIT 1
+    `;
+
+    if (existing.length > 0) {
+      return NextResponse.json({ success: true, permission: existing[0] }, { status: 201 });
+    }
+
     const result = await sql`
       INSERT INTO user_permissions (user_id, category_id)
       VALUES (${userId}, ${categoryId})
-      ON CONFLICT (user_id, category_id) DO NOTHING
-      RETURNING id, user_id AS "userId", category_id AS "categoryId", created_at AS "createdAt"
+      RETURNING id, user_id AS "userId", category_id AS "categoryId"
     `;
 
-    return NextResponse.json({ success: true, permission: result[0] || null }, { status: 201 });
+    return NextResponse.json({ success: true, permission: result[0] }, { status: 201 });
   } catch (error) {
     console.error('[Permissions POST Error]', error);
     return NextResponse.json({ error: 'Failed to grant permission' }, { status: 500 });
@@ -73,7 +103,17 @@ export async function DELETE(request: Request) {
     const cookieStore = await cookies();
     const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
 
-    if (!session.isLoggedIn || session.role !== 'Admin') {
+    if (!session.isLoggedIn) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Query DB for user's actual role to prevent stale session 403s
+    const dbUser = await sql`
+      SELECT role FROM users WHERE id = ${session.userId} LIMIT 1
+    `;
+    const userRole = dbUser[0]?.role || session.role;
+
+    if (userRole !== 'Admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 

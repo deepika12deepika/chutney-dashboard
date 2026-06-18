@@ -21,7 +21,8 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ activeItem, onSelectItem, currentUser }) => {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
-  const isAdmin = currentUser.role === 'Admin' || currentUser.role === 'Manager';
+  const isAdmin = currentUser.role === 'Admin';   
+  // const isAdmin = currentUser.role === 'Admin' || currentUser.role === 'Manager';
 
   const navItems: NavItem[] = [
     {

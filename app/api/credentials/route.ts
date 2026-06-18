@@ -24,8 +24,11 @@ export async function GET() {
 
     let credentials;
 
-    if (userRole === 'Admin' || userRole === 'Manager') {
-      // Admin / Manager: see everything
+      //   if (userRole === 'Admin' || userRole === 'Manager') {
+      // // Admin / Manager: see everything
+
+    if (userRole === 'Admin') {
+      // Only Admin sees everything automatically
       credentials = await sql`
         SELECT 
           c.id,
