@@ -1,13 +1,32 @@
 'use client';
 
-import React from 'react';
-import { UserProfile } from '../types/credential';
+import React, { useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { SessionUser } from '../types/credential';
 
 interface HeaderProps {
-  currentUser: UserProfile;
+  currentUser: SessionUser;
 }
 
 const Header: React.FC<HeaderProps> = ({ currentUser }) => {
+  const router = useRouter();
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return 'Good Morning';
+    if (hour >= 12 && hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+
+  const handleLogout = useCallback(async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } finally {
+      router.push('/login');
+      router.refresh();
+    }
+  }, [router]);
+
   return (
     <header className="h-16 flex items-center justify-between px-8 bg-[#050912] border-b border-[#15233c] shrink-0 select-none relative z-20">
       {/* Left side: clock and greeting */}
@@ -17,7 +36,11 @@ const Header: React.FC<HeaderProps> = ({ currentUser }) => {
           <polyline points="12 6 12 12 16 14" />
         </svg>
         <span className="text-[13.5px] font-medium tracking-[0.2px] text-slate-300">
-          Good Evening, {currentUser.name}
+          {getGreeting()},{' '}
+          <span className="text-white font-semibold">{currentUser.name}</span>
+        </span>
+        <span className="ml-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#16253d] border border-[#203657] text-slate-400 uppercase tracking-wider">
+          {currentUser.role}
         </span>
       </div>
 
@@ -33,7 +56,7 @@ const Header: React.FC<HeaderProps> = ({ currentUser }) => {
         </div>
 
         {/* Theme toggle icon (Sun) */}
-        <button className="text-slate-400 hover:text-white transition-colors cursor-pointer p-2 rounded-lg hover:bg-slate-900/40">
+        <button className="text-slate-400 hover:text-white transition-colors cursor-pointer p-2 rounded-lg hover:bg-slate-900/40" aria-label="Toggle theme">
           <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="5" />
             <line x1="12" y1="1" x2="12" y2="3" />
@@ -48,17 +71,22 @@ const Header: React.FC<HeaderProps> = ({ currentUser }) => {
         </button>
 
         {/* Notifications bell icon with badge */}
-        <button className="text-slate-400 hover:text-white transition-colors cursor-pointer p-2 rounded-lg hover:bg-slate-900/40 relative">
+        <button className="text-slate-400 hover:text-white transition-colors cursor-pointer p-2 rounded-lg hover:bg-slate-900/40 relative" aria-label="Notifications">
           <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
             <path d="M13.73 21a2 2 0 0 1-3.46 0" />
           </svg>
-          {/* Orange alert notification badge dot */}
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-orange-500 rounded-full ring-2 ring-[#050912]" />
         </button>
 
-        {/* Logout exit door icon */}
-        <button className="text-slate-400 hover:text-white transition-colors cursor-pointer p-2 rounded-lg hover:bg-slate-900/40">
+        {/* Logout button */}
+        <button
+          id="header-logout-btn"
+          onClick={handleLogout}
+          title="Sign Out"
+          className="text-slate-400 hover:text-rose-400 transition-colors cursor-pointer p-2 rounded-lg hover:bg-rose-900/10"
+          aria-label="Log out"
+        >
           <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
             <polyline points="16 17 21 12 16 7" />
