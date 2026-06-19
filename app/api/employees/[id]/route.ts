@@ -32,6 +32,29 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     const { id } = await params;
     const { name, email, role, password, work } = await request.json();
 
+    if (!name || !email || !role) {
+      return NextResponse.json({ error: 'Name, email, and role are required' }, { status: 400 });
+    }
+
+    if (password && password.length < 8) {
+      return NextResponse.json(
+        { error: 'Password must be at least 8 characters long.' },
+        { status: 400 }
+      );
+    }
+
+    // Check duplicate email
+    const existing = await sql`
+      SELECT id FROM users WHERE email = ${email.toLowerCase().trim()} AND id != ${Number(id)} LIMIT 1
+    `;
+
+    if (existing.length > 0) {
+      return NextResponse.json(
+        { error: 'Employee with this email already exists.' },
+        { status: 409 }
+      );
+    }
+
     if (password) {
       const hashedPassword = await bcrypt.hash(password, 12);
       await sql`

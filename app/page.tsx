@@ -9,6 +9,7 @@ import EmployeePage from './components/EmployeePage';
 import TasksPage from './components/TasksPage';
 import NotificationsPage from './components/NotificationsPage';
 import DashboardPage from './components/DashboardPage';
+import CategoriesPage from './components/CategoriesPage';
 import { SessionUser } from './types/credential';
 
 export default function Home() {
@@ -95,6 +96,10 @@ export default function Home() {
       case 'employees':
         return isAdmin
           ? <EmployeePage currentUserId={currentUser.id} />
+          : null;
+      case 'categories':
+        return isAdmin
+          ? <CategoriesPage currentUser={currentUser} />
           : null;
       default:
         return (
