@@ -6,9 +6,11 @@ import { SessionUser } from '../types/credential';
 
 interface HeaderProps {
   currentUser: SessionUser;
+  unreadNotificationsCount?: number;
+  onBellClick?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ currentUser }) => {
+const Header: React.FC<HeaderProps> = ({ currentUser, unreadNotificationsCount, onBellClick }) => {
   const router = useRouter();
 
   const getGreeting = () => {
@@ -71,12 +73,20 @@ const Header: React.FC<HeaderProps> = ({ currentUser }) => {
         </button>
 
         {/* Notifications bell icon with badge */}
-        <button className="text-slate-400 hover:text-white transition-colors cursor-pointer p-2 rounded-lg hover:bg-slate-900/40 relative" aria-label="Notifications">
+        <button
+          onClick={onBellClick}
+          className="text-slate-400 hover:text-white transition-colors cursor-pointer p-2 rounded-lg hover:bg-slate-900/40 relative"
+          aria-label="Notifications"
+        >
           <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
             <path d="M13.73 21a2 2 0 0 1-3.46 0" />
           </svg>
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-orange-500 rounded-full ring-2 ring-[#050912]" />
+          {unreadNotificationsCount !== undefined && unreadNotificationsCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 min-w-[15px] h-[15px] px-1 bg-rose-500 text-[9px] font-bold text-white rounded-full flex items-center justify-center ring-2 ring-[#050912] leading-none animate-pulse">
+              {unreadNotificationsCount}
+            </span>
+          )}
         </button>
 
         {/* Logout button */}

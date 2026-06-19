@@ -58,3 +58,30 @@ export interface UserProfile {
   role: string;
   password?: string;
 }
+
+// ─── Task (from /api/tasks) ──────────────────────────────────────────────────
+export interface Task {
+  id: number;
+  title: string;
+  description?: string | null;
+  assigned_to: number;
+  assigned_to_name?: string;
+  assigned_by: number;
+  assigned_by_name?: string;
+  priority: 'Low' | 'Medium' | 'High';
+  status: 'Pending' | 'In Progress' | 'Completed';
+  due_date?: string | null;
+  created_at: string;
+  completed_at?: string | null;
+}
+
+// ─── Notification (from /api/notifications) ──────────────────────────────────
+export interface Notification {
+  id: number;
+  user_id: number;
+  title?: string | null;
+  message: string;
+  type: 'task_completed' | 'task_assigned' | 'credential_assigned' | 'system';
+  is_read: boolean;
+  created_at: string;
+}

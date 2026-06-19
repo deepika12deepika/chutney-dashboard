@@ -50,6 +50,7 @@ export default function TodoForm({ onAddTodo }: TodoFormProps) {
             <option value="GitHub">🐙 GitHub Ent</option>
             <option value="Vercel">▲ Vercel Hosting</option>
             <option value="Supabase">⚡ Supabase DB</option>
+            <option value="Neon">🦄 Neon DB</option>
           </select>
         </div>
 

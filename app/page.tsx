@@ -1,18 +1,35 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import CredentialsPage from './components/CredentialsPage';
 import EmployeePage from './components/EmployeePage';
+import TasksPage from './components/TasksPage';
+import NotificationsPage from './components/NotificationsPage';
+import DashboardPage from './components/DashboardPage';
 import { SessionUser } from './types/credential';
 
 export default function Home() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState('credentials');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [currentUser, setCurrentUser] = useState<SessionUser | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const res = await fetch('/api/notifications');
+      if (res.ok) {
+        const data = await res.json();
+        const count = (data.notifications || []).filter((n: any) => !n.is_read).length;
+        setUnreadCount(count);
+      }
+    } catch (err) {
+      console.error('Error fetching notification count:', err);
+    }
+  }, []);
 
   useEffect(() => {
     // Load session user from the server-side cookie on every mount
@@ -38,6 +55,18 @@ export default function Home() {
       });
   }, [router]);
 
+  // Set up periodic polling for notification count
+  useEffect(() => {
+    if (!currentUser) return;
+    
+    fetchUnreadCount();
+    const interval = setInterval(() => {
+      fetchUnreadCount();
+    }, 10000); // Poll every 10 seconds
+
+    return () => clearInterval(interval);
+  }, [currentUser, fetchUnreadCount]);
+
   if (isLoading || !currentUser) {
     return (
       <div className="flex h-screen bg-[#060814] items-center justify-center">
@@ -52,12 +81,17 @@ export default function Home() {
   }
 
   const isAdmin = currentUser.role === 'Admin';
-  // const isAdmin = currentUser.role === 'Admin' || currentUser.role === 'Manager';
 
   const renderPage = () => {
     switch (activeTab) {
+      case 'dashboard':
+        return <DashboardPage currentUser={currentUser} onSelectTab={setActiveTab} />;
       case 'credentials':
         return <CredentialsPage currentUser={currentUser} />;
+      case 'tasks':
+        return <TasksPage currentUser={currentUser} />;
+      case 'notifications':
+        return <NotificationsPage currentUser={currentUser} onRefreshCount={fetchUnreadCount} />;
       case 'employees':
         return isAdmin
           ? <EmployeePage currentUserId={currentUser.id} />
@@ -66,9 +100,7 @@ export default function Home() {
         return (
           <div className="flex-1 bg-[#060814] p-8 text-slate-100 flex flex-col items-center justify-center select-none">
             <div className="w-16 h-16 rounded-2xl bg-[#09101f] border border-[#16253d] flex items-center justify-center text-2xl mb-4 shadow-lg">
-              {activeTab === 'dashboard' ? '📊' :
-               activeTab === 'projects' ? '📁' :
-               activeTab === 'tasks' ? '✓' :
+              {activeTab === 'projects' ? '📁' :
                activeTab === 'storage' ? '💾' :
                activeTab === 'chat' ? '💬' :
                activeTab === 'social' ? '🌐' :
@@ -94,11 +126,16 @@ export default function Home() {
         activeItem={activeTab}
         onSelectItem={setActiveTab}
         currentUser={currentUser}
+        unreadNotificationsCount={unreadCount}
       />
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-        <Header currentUser={currentUser} />
+        <Header
+          currentUser={currentUser}
+          unreadNotificationsCount={unreadCount}
+          onBellClick={() => setActiveTab('notifications')}
+        />
         {renderPage()}
       </div>
     </div>
