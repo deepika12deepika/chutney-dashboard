@@ -8,7 +8,7 @@ interface CredentialsPageProps {
 }
 
 const DEFAULT_PLATFORMS = [
-  'AWS', 'GitHub', 'Vercel', 'Supabase', 'Google Cloud',
+  'None', 'GitHub', 'Vercel', 'Supabase', 'Google Cloud',
   'Azure', 'Heroku', 'Netlify', 'Cloudflare', 'DigitalOcean',
   'Shopify', 'WordPress', 'Stripe', 'SendGrid', 'Mailchimp',
   'Slack', 'Zoom', 'Trello', 'Figma', 'Notion',
@@ -37,6 +37,14 @@ const CredentialsPage: React.FC<CredentialsPageProps> = ({ currentUser }) => {
   const [formNotes, setFormNotes] = useState('');
   const [formCategoryId, setFormCategoryId] = useState<number | ''>('');
   const [formSubmitting, setFormSubmitting] = useState(false);
+  const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryDesc, setNewCategoryDesc] = useState('');
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+  const [platforms, setPlatforms] = useState<{ id: number; name: string }[]>([]);
+  const [isAddPlatformOpen, setIsAddPlatformOpen] = useState(false);
+  const [newPlatformName, setNewPlatformName] = useState('');
+  const [isCreatingPlatform, setIsCreatingPlatform] = useState(false);
 
   // Security verification modal
   const [verificationCredId, setVerificationCredId] = useState<string | null>(null);
@@ -57,17 +65,101 @@ const CredentialsPage: React.FC<CredentialsPageProps> = ({ currentUser }) => {
     setTimeout(() => setToastMessage(null), 2500);
   };
 
+  const handleCreateCategorySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCategoryName.trim()) return;
+    setIsCreatingCategory(true);
+    try {
+      const res = await fetch('/api/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newCategoryName, description: newCategoryDesc }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const createdCategory = data.category;
+        showToast('Category created successfully');
+        
+        // Refresh categories list
+        const catRes = await fetch('/api/categories');
+        if (catRes.ok) {
+          const catData = await catRes.json();
+          setCategories(catData.categories || []);
+        }
+        
+        // Select the newly created category
+        if (createdCategory) {
+          setFormCategoryId(createdCategory.id);
+        }
+        
+        setIsAddCategoryOpen(false);
+        setNewCategoryName('');
+        setNewCategoryDesc('');
+      } else {
+        const d = await res.json();
+        showToast(d.error || 'Failed to create category', 'error');
+      }
+    } catch {
+      showToast('Network error', 'error');
+    } finally {
+      setIsCreatingCategory(false);
+    }
+  };
+
+  const handleCreatePlatformSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPlatformName.trim()) return;
+    setIsCreatingPlatform(true);
+    try {
+      const res = await fetch('/api/platforms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newPlatformName }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const createdPlatform = data.platform;
+        showToast('Platform created successfully');
+        
+        // Refresh platforms list
+        const platRes = await fetch('/api/platforms');
+        if (platRes.ok) {
+          const platData = await platRes.json();
+          setPlatforms(platData.platforms || []);
+        }
+        
+        // Select the newly created platform
+        if (createdPlatform) {
+          setFormPlatform(createdPlatform.name);
+        }
+        
+        setIsAddPlatformOpen(false);
+        setNewPlatformName('');
+      } else {
+        const d = await res.json();
+        showToast(d.error || 'Failed to create platform', 'error');
+      }
+    } catch {
+      showToast('Network error', 'error');
+    } finally {
+      setIsCreatingPlatform(false);
+    }
+  };
+
   const fetchCredentials = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [credRes, catRes] = await Promise.all([
+      const [credRes, catRes, platRes] = await Promise.all([
         fetch('/api/credentials'),
         fetch('/api/categories'),
+        fetch('/api/platforms'),
       ]);
       const credData = await credRes.json();
       const catData = await catRes.json();
+      const platData = await platRes.json();
       setCredentials(credData.credentials || []);
       setCategories(catData.categories || []);
+      setPlatforms(platData.platforms || []);
     } catch {
       showToast('Failed to load credentials', 'error');
     } finally {
@@ -124,7 +216,7 @@ const CredentialsPage: React.FC<CredentialsPageProps> = ({ currentUser }) => {
   const openAddModal = () => {
     setEditingCredential(null);
     setFormTitle('');
-    setFormPlatform(DEFAULT_PLATFORMS[0]);
+    setFormPlatform(platforms[0]?.name || DEFAULT_PLATFORMS[0]);
     setFormClient('');
     setFormUsername('');
     setFormPassword('');
@@ -137,7 +229,7 @@ const CredentialsPage: React.FC<CredentialsPageProps> = ({ currentUser }) => {
   const openEditModal = (cred: Credential) => {
     setEditingCredential(cred);
     setFormTitle(cred.title);
-    setFormPlatform(cred.platform || DEFAULT_PLATFORMS[0]);
+    setFormPlatform(cred.platform || (platforms[0]?.name || DEFAULT_PLATFORMS[0]));
     setFormClient(cred.clientName || '');
     setFormUsername(cred.username);
     setFormPassword(cred.password || '');
@@ -242,7 +334,7 @@ const CredentialsPage: React.FC<CredentialsPageProps> = ({ currentUser }) => {
   const uniquePlatforms = new Set(credentials.map((c) => c.platform).filter(Boolean)).size;
 
   return (
-    <div className="flex-1 bg-[#060814] min-h-screen p-8 text-slate-100 overflow-y-auto flex flex-col relative select-none z-10">
+    <div className="flex-1 bg-[#060814] h-[calc(100vh-4rem)] p-8 text-slate-100 overflow-y-auto flex flex-col relative select-none">
 
       {/* Toast */}
       {toastMessage && (
@@ -602,17 +694,17 @@ const CredentialsPage: React.FC<CredentialsPageProps> = ({ currentUser }) => {
 
       {/* Add / Edit Modal */}
       {isAddOpen && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-[#09101f] border border-[#203657] w-full max-w-md rounded-xl p-6 shadow-2xl relative">
-            <button onClick={() => setIsAddOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white cursor-pointer">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-[#09101f] border border-[#203657] w-full max-w-md rounded-xl p-6 shadow-2xl relative max-h-[90vh] flex flex-col">
+            <button onClick={() => setIsAddOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white cursor-pointer z-10">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-            <h3 className="text-lg font-bold text-white mb-4">
+            <h3 className="text-lg font-bold text-white mb-4 shrink-0">
               {editingCredential ? '✏️ Edit Platform Credential' : '➕ Add New Platform Credential'}
             </h3>
-            <form onSubmit={handleFormSubmit} className="space-y-4 text-xs font-semibold">
+            <form onSubmit={handleFormSubmit} className="space-y-4 text-xs font-semibold flex-1 overflow-y-auto pr-1">
               <div>
                 <label className="block text-[11px] text-slate-400 mb-1">Credential Title *</label>
                 <input
@@ -628,8 +720,18 @@ const CredentialsPage: React.FC<CredentialsPageProps> = ({ currentUser }) => {
                     value={formPlatform} onChange={(e) => setFormPlatform(e.target.value)}
                     className="w-full bg-[#050912] border border-[#172740] text-slate-200 px-3 py-2.5 rounded-lg focus:outline-none focus:border-blue-500 cursor-pointer font-sans"
                   >
-                    {DEFAULT_PLATFORMS.map((p) => <option key={p} value={p}>{p}</option>)}
+                    <option value="">Select Platform</option>
+                    {platforms.map((p) => <option key={p.id} value={p.name}>{p.name}</option>)}
                   </select>
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => setIsAddPlatformOpen(true)}
+                      className="text-[11px] text-blue-400 hover:text-blue-300 mt-1 cursor-pointer inline-block"
+                    >
+                      + Add New Platform
+                    </button>
+                  )}
                 </div>
                 <div>
                   <label className="block text-[11px] text-slate-400 mb-1">Category</label>
@@ -640,6 +742,15 @@ const CredentialsPage: React.FC<CredentialsPageProps> = ({ currentUser }) => {
                     <option value="">None</option>
                     {categories.map((cat) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
                   </select>
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => setIsAddCategoryOpen(true)}
+                      className="text-[11px] text-blue-400 hover:text-blue-300 mt-1 cursor-pointer inline-block"
+                    >
+                      + Add New Category
+                    </button>
+                  )}
                 </div>
               </div>
               <div>
@@ -691,6 +802,91 @@ const CredentialsPage: React.FC<CredentialsPageProps> = ({ currentUser }) => {
                 className="w-full py-2.5 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-[13px] font-bold rounded-lg transition-colors shadow-lg cursor-pointer disabled:opacity-60"
               >
                 {formSubmitting ? 'Saving...' : editingCredential ? 'Save Changes' : 'Create Credential'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Add Category Modal */}
+      {isAddCategoryOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-[#09101f] border border-[#203657] w-full max-w-sm rounded-xl p-6 shadow-2xl relative">
+            <button
+              type="button"
+              onClick={() => setIsAddCategoryOpen(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white cursor-pointer"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <h4 className="text-[14px] font-bold text-white mb-4">➕ Add New Category</h4>
+            <form onSubmit={handleCreateCategorySubmit} className="space-y-4 text-xs font-semibold">
+              <div>
+                <label className="block text-[11px] text-slate-400 mb-1">Category Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder="e.g. Analytics, Social Media"
+                  className="w-full bg-[#050912] border border-[#172740] text-slate-100 px-3 py-2.5 rounded-lg focus:outline-none focus:border-blue-500 font-sans"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] text-slate-400 mb-1">Description (Optional)</label>
+                <input
+                  type="text"
+                  value={newCategoryDesc}
+                  onChange={(e) => setNewCategoryDesc(e.target.value)}
+                  placeholder="Brief description"
+                  className="w-full bg-[#050912] border border-[#172740] text-slate-100 px-3 py-2.5 rounded-lg focus:outline-none focus:border-blue-500 font-sans"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={isCreatingCategory}
+                className="w-full py-2.5 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-[12px] font-bold rounded-lg transition-colors shadow-lg cursor-pointer"
+              >
+                {isCreatingCategory ? 'Creating...' : 'Create Category'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Platform Modal */}
+      {isAddPlatformOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-[#09101f] border border-[#203657] w-full max-w-sm rounded-xl p-6 shadow-2xl relative">
+            <button
+              type="button"
+              onClick={() => setIsAddPlatformOpen(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white cursor-pointer"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <h4 className="text-[14px] font-bold text-white mb-4">➕ Add New Platform</h4>
+            <form onSubmit={handleCreatePlatformSubmit} className="space-y-4 text-xs font-semibold">
+              <div>
+                <label className="block text-[11px] text-slate-400 mb-1">Platform Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={newPlatformName}
+                  onChange={(e) => setNewPlatformName(e.target.value)}
+                  placeholder="e.g. GitLab, Salesforce"
+                  className="w-full bg-[#050912] border border-[#172740] text-slate-100 px-3 py-2.5 rounded-lg focus:outline-none focus:border-blue-500 font-sans"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={isCreatingPlatform}
+                className="w-full py-2.5 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-[12px] font-bold rounded-lg transition-colors shadow-lg cursor-pointer"
+              >
+                {isCreatingPlatform ? 'Creating...' : 'Create Platform'}
               </button>
             </form>
           </div>

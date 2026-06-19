@@ -10,7 +10,6 @@ export async function GET() {
     const cookieStore = await cookies();
     const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
 
-    // if (!session.isLoggedIn || session.role !== 'Admin') {
     if (!session.isLoggedIn) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -32,11 +31,11 @@ export async function GET() {
         u.name AS "userName",
         u.email AS "userEmail",
         up.category_id AS "categoryId",
-        pc.category_name AS "categoryName"
+        pc.name AS "categoryName"
       FROM user_permissions up
       JOIN users u ON up.user_id = u.id
-      JOIN password_categories pc ON up.category_id = pc.id
-      ORDER BY u.name, pc.category_name
+      JOIN credential_categories pc ON up.category_id = pc.id
+      ORDER BY u.name, pc.name
     `;
 
     return NextResponse.json({ permissions });
@@ -46,7 +45,7 @@ export async function GET() {
   }
 }
 
-// POST /api/permissions — Admin only: grant a category to an employee
+// POST /api/permissions — Admin only: grant or sync folder permissions
 export async function POST(request: Request) {
   try {
     const cookieStore = await cookies();
@@ -66,10 +65,48 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    const { userId, categoryId } = await request.json();
+    const body = await request.json();
+    const { userId, categoryId, categoryIds } = body;
 
-    if (!userId || !categoryId) {
-      return NextResponse.json({ error: 'userId and categoryId are required' }, { status: 400 });
+    if (!userId) {
+      return NextResponse.json({ error: 'userId is required' }, { status: 400 });
+    }
+
+    // Check if it is a batch sync request
+    if (Array.isArray(categoryIds)) {
+      // 1. Delete all existing permissions for this user
+      await sql`
+        DELETE FROM user_permissions WHERE user_id = ${userId}
+      `;
+
+      // 2. Insert new selections
+      if (categoryIds.length > 0) {
+        for (const catId of categoryIds) {
+          await sql`
+            INSERT INTO user_permissions (user_id, category_id)
+            VALUES (${userId}, ${catId})
+          `;
+        }
+      }
+
+      // Generate a credential assigned notification if permissions changed
+      await sql`
+        INSERT INTO notifications (user_id, title, message, type, is_read)
+        VALUES (
+          ${userId},
+          'Credential Permissions Updated',
+          'Admin updated your credential folder permissions.',
+          'credential_assigned',
+          false
+        )
+      `;
+
+      return NextResponse.json({ success: true });
+    }
+
+    // Single permission toggle fallback
+    if (!categoryId) {
+      return NextResponse.json({ error: 'categoryId or categoryIds is required' }, { status: 400 });
     }
 
     // Manual check to prevent duplicates since there is no unique constraint
@@ -97,7 +134,7 @@ export async function POST(request: Request) {
   }
 }
 
-// DELETE /api/permissions — Admin only: revoke permission
+// DELETE /api/permissions — Admin only: revoke permission (fallback)
 export async function DELETE(request: Request) {
   try {
     const cookieStore = await cookies();

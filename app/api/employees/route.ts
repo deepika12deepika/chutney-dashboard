@@ -67,13 +67,23 @@ export async function POST(request: Request) {
       );
     }
 
+    if (password.length < 8) {
+      return NextResponse.json(
+        { error: 'Password must be at least 8 characters long.' },
+        { status: 400 }
+      );
+    }
+
     // Check duplicate email
     const existing = await sql`
       SELECT id FROM users WHERE email = ${email.toLowerCase().trim()} LIMIT 1
     `;
 
     if (existing.length > 0) {
-      return NextResponse.json({ error: 'Email already registered' }, { status: 409 });
+      return NextResponse.json(
+        { error: 'Employee with this email already exists.' },
+        { status: 409 }
+      );
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);

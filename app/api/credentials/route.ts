@@ -40,10 +40,10 @@ export async function GET() {
           c.status,
           c.notes,
           c.created_at AS "createdAt",
-          pc.category_name AS "categoryName",
+          pc.name AS "categoryName",
           pc.id AS "categoryId"
         FROM credentials c
-        LEFT JOIN password_categories pc ON c.category_id = pc.id
+        LEFT JOIN credential_categories pc ON c.category_id = pc.id
         ORDER BY c.created_at DESC
       `;
     } else {
@@ -59,10 +59,10 @@ export async function GET() {
           c.status,
           c.notes,
           c.created_at AS "createdAt",
-          pc.category_name AS "categoryName",
+          pc.name AS "categoryName",
           pc.id AS "categoryId"
         FROM credentials c
-        INNER JOIN password_categories pc ON c.category_id = pc.id
+        INNER JOIN credential_categories pc ON c.category_id = pc.id
         INNER JOIN user_permissions up ON up.category_id = c.category_id
         WHERE up.user_id = ${session.userId}
         ORDER BY c.created_at DESC

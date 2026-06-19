@@ -74,7 +74,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onSelectTab 
   };
 
   return (
-    <div className="flex-1 bg-[#060814] min-h-screen p-8 text-slate-100 overflow-y-auto flex flex-col relative select-none">
+    <div className="flex-1 bg-[#060814] h-[calc(100vh-4rem)] p-8 text-slate-100 overflow-y-auto flex flex-col relative select-none">
       {/* Welcome banner */}
       <div className="mb-8 p-6 bg-gradient-to-r from-[#091024] via-[#0b1430] to-[#070e24] rounded-2xl border border-[#16254a]/30 shadow-lg relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="relative z-10">

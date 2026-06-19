@@ -15,9 +15,9 @@ export async function GET() {
     }
 
     const categories = await sql`
-      SELECT id, category_name AS "name", description, created_at
-      FROM password_categories
-      ORDER BY category_name ASC
+      SELECT id, name, description, created_at
+      FROM credential_categories
+      ORDER BY name ASC
     `;
 
     return NextResponse.json({ categories });
@@ -54,9 +54,9 @@ export async function POST(request: Request) {
     }
 
     const result = await sql`
-      INSERT INTO password_categories (category_name, description)
+      INSERT INTO credential_categories (name, description)
       VALUES (${name.trim()}, ${description || null})
-      RETURNING id, category_name AS "name", description, created_at
+      RETURNING id, name, description, created_at
     `;
 
     return NextResponse.json({ success: true, category: result[0] });

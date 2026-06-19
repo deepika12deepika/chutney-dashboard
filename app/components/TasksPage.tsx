@@ -227,7 +227,7 @@ const TasksPage: React.FC<TasksPageProps> = ({ currentUser }) => {
   };
 
   return (
-    <div className="flex-1 bg-[#060814] min-h-screen p-8 text-slate-100 overflow-y-auto flex flex-col relative select-none">
+    <div className="flex-1 bg-[#060814] h-[calc(100vh-4rem)] p-8 text-slate-100 overflow-y-auto flex flex-col relative select-none">
       
       {/* Toast */}
       {toastMessage && (

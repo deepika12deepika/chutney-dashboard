@@ -27,9 +27,12 @@ const EmployeePage: React.FC<EmployeePageProps> = ({ currentUserId }) => {
   const [formName, setFormName] = useState('');
   const [formEmail, setFormEmail] = useState('');
   const [formPassword, setFormPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [formRole, setFormRole] = useState<'Admin' | 'Manager' | 'Employee'>('Employee');
   const [formWork, setFormWork] = useState('');
   const [formSubmitting, setFormSubmitting] = useState(false);
+  const [pendingPermIds, setPendingPermIds] = useState<number[]>([]);
+  const [isSavingPermissions, setIsSavingPermissions] = useState(false);
 
   const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
     setToastMessage(msg);
@@ -68,6 +71,7 @@ const EmployeePage: React.FC<EmployeePageProps> = ({ currentUserId }) => {
     setFormName('');
     setFormEmail('');
     setFormPassword('');
+    setShowPassword(false);
     setFormRole('Employee');
     setFormWork('');
     setIsModalOpen(true);
@@ -78,6 +82,7 @@ const EmployeePage: React.FC<EmployeePageProps> = ({ currentUserId }) => {
     setFormName(emp.name);
     setFormEmail(emp.email);
     setFormPassword('');
+    setShowPassword(false);
     setFormRole(emp.role);
     setFormWork(emp.work || '');
     setIsModalOpen(true);
@@ -143,23 +148,55 @@ const EmployeePage: React.FC<EmployeePageProps> = ({ currentUserId }) => {
   const hasPermission = (empId: number, catId: number) =>
     permissions.some((p) => p.userId === empId && p.categoryId === catId);
 
-  const togglePermission = async (empId: number, catId: number) => {
-    if (hasPermission(empId, catId)) {
-      // Revoke
-      await fetch('/api/permissions', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: empId, categoryId: catId }),
-      });
-    } else {
-      // Grant
-      await fetch('/api/permissions', {
+  const togglePendingPermission = (catId: number) => {
+    setPendingPermIds((prev) =>
+      prev.includes(catId) ? prev.filter((id) => id !== catId) : [...prev, catId]
+    );
+  };
+
+  const savePermissions = async () => {
+    if (!selectedEmployeeForPerms) return;
+    setIsSavingPermissions(true);
+    try {
+      const res = await fetch('/api/permissions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: empId, categoryId: catId }),
+        body: JSON.stringify({
+          userId: selectedEmployeeForPerms.id,
+          categoryIds: pendingPermIds,
+        }),
       });
+      if (res.ok) {
+        showToast('Permissions updated successfully.');
+        setIsPermissionModalOpen(false);
+        fetchAll();
+      } else {
+        const d = await res.json();
+        showToast(d.error || 'Failed to update permissions', 'error');
+      }
+    } catch {
+      showToast('Network error', 'error');
+    } finally {
+      setIsSavingPermissions(false);
     }
-    fetchAll();
+  };
+
+  const closePermissionModal = () => {
+    if (!selectedEmployeeForPerms) return;
+    const originalPermIds = permissions
+      .filter((p) => p.userId === selectedEmployeeForPerms.id)
+      .map((p) => p.categoryId)
+      .sort();
+    const currentPermIds = [...pendingPermIds].sort();
+    const hasChanges = JSON.stringify(originalPermIds) !== JSON.stringify(currentPermIds);
+
+    if (hasChanges) {
+      if (confirm('You have unsaved changes. Discard changes?')) {
+        setIsPermissionModalOpen(false);
+      }
+    } else {
+      setIsPermissionModalOpen(false);
+    }
   };
 
   const getRoleStyle = (role: string) => {
@@ -169,7 +206,7 @@ const EmployeePage: React.FC<EmployeePageProps> = ({ currentUserId }) => {
   };
 
   return (
-    <div className="flex-1 bg-[#060814] min-h-screen p-8 text-slate-100 overflow-y-auto relative">
+    <div className="flex-1 bg-[#060814] h-[calc(100vh-4rem)] p-8 text-slate-100 overflow-y-auto relative">
 
       {/* Toast */}
       {toastMessage && (
@@ -300,7 +337,14 @@ const EmployeePage: React.FC<EmployeePageProps> = ({ currentUserId }) => {
                   {/* Actions */}
                   <div className="flex items-center gap-2 shrink-0">
                     <button
-                      onClick={() => { setSelectedEmployeeForPerms(emp); setIsPermissionModalOpen(true); }}
+                      onClick={() => {
+                        setSelectedEmployeeForPerms(emp);
+                        const userPerms = permissions
+                          .filter((p) => p.userId === emp.id)
+                          .map((p) => p.categoryId);
+                        setPendingPermIds(userPerms);
+                        setIsPermissionModalOpen(true);
+                      }}
                       className="px-3 py-1.5 bg-[#1a2f4f] hover:bg-[#1e3a5f] text-blue-400 text-[11px] font-bold rounded-lg transition-colors cursor-pointer border border-blue-900/30"
                       title="Manage Permissions"
                     >
@@ -363,14 +407,42 @@ const EmployeePage: React.FC<EmployeePageProps> = ({ currentUserId }) => {
                 <label className="block text-[11px] text-slate-400 mb-1">
                   Password {editingEmployee ? '(leave blank to keep current)' : '*'}
                 </label>
-                <input
-                  type="password"
-                  required={!editingEmployee}
-                  value={formPassword}
-                  onChange={(e) => setFormPassword(e.target.value)}
-                  placeholder="Min 6 characters"
-                  className="w-full bg-[#050912] border border-[#172740] text-slate-100 px-3.5 py-2.5 rounded-lg focus:outline-none focus:border-blue-500 font-mono"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required={!editingEmployee}
+                    value={formPassword}
+                    onChange={(e) => setFormPassword(e.target.value)}
+                    placeholder={editingEmployee ? 'Leave blank to keep current' : 'Min 8 characters'}
+                    className="w-full bg-[#050912] border border-[#172740] text-slate-100 pl-3.5 pr-10 py-2.5 rounded-lg focus:outline-none focus:border-blue-500 font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer transition-opacity hover:opacity-100 opacity-50"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? (
+                      <svg className="w-4 h-4" fill="none" stroke="rgba(255,255,255,0.8)" viewBox="0 0 24 24" strokeWidth="2.5">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                        <line x1="1" y1="1" x2="23" y2="23" />
+                        <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                        <path d="M10.93 10.93a3.5 3.5 0 0 0 4.14 4.14" />
+                        <path d="M12 9a3 3 0 0 0-3 3" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="rgba(255,255,255,0.8)" viewBox="0 0 24 24" strokeWidth="2.5">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+                {formPassword && formPassword.length < 8 && (
+                  <p className="text-rose-500 text-[10px] mt-1 font-semibold">
+                    Password must be at least 8 characters long.
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-[11px] text-slate-400 mb-1">Role *</label>
@@ -383,18 +455,31 @@ const EmployeePage: React.FC<EmployeePageProps> = ({ currentUserId }) => {
                 </select>
               </div>
               <div>
-                <label className="block text-[11px] text-slate-400 mb-1">Work Specialization / Job Role</label>
-                <input
-                  type="text"
+                <label className="block text-[11px] text-slate-400 mb-1">Work Specialization / Job Role *</label>
+                <select
                   value={formWork}
                   onChange={(e) => setFormWork(e.target.value)}
-                  placeholder="e.g. Social Media, Website, Graphic designer, Video Editor"
-                  className="w-full bg-[#050912] border border-[#172740] text-slate-100 px-3.5 py-2.5 rounded-lg focus:outline-none focus:border-blue-500 font-sans"
-                />
+                  required
+                  className="w-full bg-[#050912] border border-[#172740] text-slate-200 px-3 py-2.5 rounded-lg focus:outline-none focus:border-blue-500 cursor-pointer font-sans"
+                >
+                  <option value="">Select Specialization</option>
+                  <option value="Admin">Admin</option>
+                  <option value="Social Media">Social Media</option>
+                  <option value="Website Development">Website Development</option>
+                  <option value="Graphic Design">Graphic Design</option>
+                  <option value="Video Editing">Video Editing</option>
+                  <option value="SEO">SEO</option>
+                  <option value="Content Writing">Content Writing</option>
+                  <option value="Performance Marketing">Performance Marketing</option>
+                  <option value="Hosting & Domain">Hosting & Domain</option>
+                  <option value="Accounts">Accounts</option>
+                  <option value="HR">HR</option>
+                  <option value="Other">Other</option>
+                </select>
               </div>
               <button
                 type="submit"
-                disabled={formSubmitting}
+                disabled={formSubmitting || (!editingEmployee && formPassword.length < 8) || (!!editingEmployee && formPassword !== '' && formPassword.length < 8)}
                 className="w-full py-2.5 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-[13px] font-bold rounded-lg transition-colors shadow-lg cursor-pointer disabled:opacity-60"
               >
                 {formSubmitting ? 'Saving...' : editingEmployee ? 'Save Changes' : 'Create Employee'}
@@ -408,7 +493,7 @@ const EmployeePage: React.FC<EmployeePageProps> = ({ currentUserId }) => {
       {isPermissionModalOpen && selectedEmployeeForPerms && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
           <div className="bg-[#09101f] border border-[#203657] w-full max-w-sm rounded-xl p-6 shadow-2xl relative max-h-[80vh] flex flex-col">
-            <button onClick={() => setIsPermissionModalOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white cursor-pointer">
+            <button onClick={closePermissionModal} className="absolute top-4 right-4 text-slate-400 hover:text-white cursor-pointer">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -424,7 +509,7 @@ const EmployeePage: React.FC<EmployeePageProps> = ({ currentUserId }) => {
                 <p className="text-slate-500 text-[12px] text-center py-8">No categories found. Create some first.</p>
               ) : (
                 categories.map((cat) => {
-                  const granted = hasPermission(selectedEmployeeForPerms.id, cat.id);
+                  const granted = pendingPermIds.includes(cat.id);
                   return (
                     <div key={cat.id} className="flex items-center justify-between bg-[#050912]/60 border border-[#16253d]/50 px-4 py-3 rounded-lg">
                       <div>
@@ -432,7 +517,7 @@ const EmployeePage: React.FC<EmployeePageProps> = ({ currentUserId }) => {
                         {cat.description && <p className="text-[10px] text-slate-500 mt-0.5">{cat.description}</p>}
                       </div>
                       <button
-                        onClick={() => togglePermission(selectedEmployeeForPerms.id, cat.id)}
+                        onClick={() => togglePendingPermission(cat.id)}
                         className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer shrink-0 ${granted ? 'bg-blue-600' : 'bg-slate-700'}`}
                         title={granted ? 'Revoke access' : 'Grant access'}
                       >
@@ -443,10 +528,22 @@ const EmployeePage: React.FC<EmployeePageProps> = ({ currentUserId }) => {
                 })
               )}
             </div>
-            <div className="pt-4 mt-2 border-t border-[#111c2e]">
-              <p className="text-[11px] text-slate-600 text-center">
-                Toggle switches to grant / revoke category access
-              </p>
+            <div className="pt-4 mt-4 border-t border-[#111c2e] flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={closePermissionModal}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-[12px] font-bold rounded-lg transition-colors cursor-pointer border border-slate-700/30"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={savePermissions}
+                disabled={isSavingPermissions}
+                className="px-4 py-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-[12px] font-bold rounded-lg transition-colors cursor-pointer shadow-lg disabled:opacity-60"
+              >
+                {isSavingPermissions ? 'Saving...' : 'Save Permissions'}
+              </button>
             </div>
           </div>
         </div>
