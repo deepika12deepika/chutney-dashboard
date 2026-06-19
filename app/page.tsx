@@ -10,6 +10,8 @@ import TasksPage from './components/TasksPage';
 import NotificationsPage from './components/NotificationsPage';
 import DashboardPage from './components/DashboardPage';
 import CategoriesPage from './components/CategoriesPage';
+import ClientsPage from './components/ClientsPage';
+import NewsPage from './components/NewsPage';
 import { SessionUser } from './types/credential';
 
 export default function Home() {
@@ -33,11 +35,9 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    // Load session user from the server-side cookie on every mount
     fetch('/api/auth/me')
       .then((res) => {
         if (!res.ok) {
-          // Session expired or not found — redirect to login
           router.push('/login');
           return null;
         }
@@ -56,14 +56,13 @@ export default function Home() {
       });
   }, [router]);
 
-  // Set up periodic polling for notification count
   useEffect(() => {
     if (!currentUser) return;
     
     fetchUnreadCount();
     const interval = setInterval(() => {
       fetchUnreadCount();
-    }, 10000); // Poll every 10 seconds
+    }, 10000);
 
     return () => clearInterval(interval);
   }, [currentUser, fetchUnreadCount]);
@@ -94,13 +93,13 @@ export default function Home() {
       case 'notifications':
         return <NotificationsPage currentUser={currentUser} onRefreshCount={fetchUnreadCount} />;
       case 'employees':
-        return isAdmin
-          ? <EmployeePage currentUserId={currentUser.id} />
-          : null;
+        return isAdmin ? <EmployeePage currentUserId={currentUser.id} /> : null;
       case 'categories':
-        return isAdmin
-          ? <CategoriesPage currentUser={currentUser} />
-          : null;
+        return isAdmin ? <CategoriesPage currentUser={currentUser} /> : null;
+      case 'clients':
+        return <ClientsPage currentUser={currentUser} />;
+      case 'news':
+        return <NewsPage currentUser={currentUser} />;
       default:
         return (
           <div className="flex-1 bg-[#060814] p-8 text-slate-100 flex flex-col items-center justify-center select-none">
@@ -126,7 +125,6 @@ export default function Home() {
 
   return (
     <div className="flex h-screen bg-[#060814] overflow-hidden font-sans antialiased text-slate-200">
-      {/* Sidebar */}
       <Sidebar
         activeItem={activeTab}
         onSelectItem={setActiveTab}
@@ -134,7 +132,6 @@ export default function Home() {
         unreadNotificationsCount={unreadCount}
       />
 
-      {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         <Header
           currentUser={currentUser}
