@@ -28,6 +28,7 @@ export async function GET() {
       tasks = await sql`
         SELECT 
           t.id, t.title, t.description, t.assigned_to, t.assigned_by, t.status, t.priority,
+          TO_CHAR(t.start_date, 'YYYY-MM-DD') AS "start_date",
           TO_CHAR(t.due_date, 'YYYY-MM-DD') AS "due_date",
           t.created_at AS "created_at",
           t.completed_at AS "completed_at",
@@ -48,6 +49,7 @@ export async function GET() {
       tasks = await sql`
         SELECT 
           t.id, t.title, t.description, t.assigned_to, t.assigned_by, t.status, t.priority,
+          TO_CHAR(t.start_date, 'YYYY-MM-DD') AS "start_date",
           TO_CHAR(t.due_date, 'YYYY-MM-DD') AS "due_date",
           t.created_at AS "created_at",
           t.completed_at AS "completed_at",

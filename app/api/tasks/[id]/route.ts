@@ -49,6 +49,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       const assigned_to = body.assigned_to !== undefined ? Number(body.assigned_to) : task.assigned_to;
       const priority = body.priority !== undefined ? body.priority : task.priority;
       const status = body.status !== undefined ? body.status : task.status;
+      const start_date = body.start_date !== undefined ? (body.start_date ? new Date(body.start_date) : null) : task.start_date;
       const due_date = body.due_date !== undefined ? (body.due_date ? new Date(body.due_date) : null) : task.due_date;
       const projectId = body.projectId !== undefined ? (body.projectId ? Number(body.projectId) : null) : task.project_id;
       const departmentId = body.departmentId !== undefined ? (body.departmentId ? Number(body.departmentId) : null) : task.department_id;
@@ -68,6 +69,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
           assigned_to = ${assigned_to},
           priority = ${priority},
           status = ${status},
+          start_date = ${start_date},
           due_date = ${due_date},
           completed_at = ${completed_at},
           project_id = ${projectId},
