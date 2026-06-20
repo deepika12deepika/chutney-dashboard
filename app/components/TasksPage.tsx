@@ -3,6 +3,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Task, Employee, SessionUser } from '../types/credential';
 
+type TaskWithStartDate = Task & {
+  start_date?: string | null;
+  projectId?: number | null;
+  departmentId?: number | null;
+  projectName?: string;
+  departmentName?: string;
+  assigned_to_name?: string;
+  assigned_by_name?: string;
+};
+
 interface TasksPageProps {
   currentUser: SessionUser;
 }
@@ -11,7 +21,7 @@ const PRIORITIES = ['Low', 'Medium', 'High'] as const;
 const STATUSES = ['Pending', 'In Progress', 'Completed'] as const;
 
 const TasksPage: React.FC<TasksPageProps> = ({ currentUser }) => {
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<TaskWithStartDate[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
@@ -26,7 +36,7 @@ const TasksPage: React.FC<TasksPageProps> = ({ currentUser }) => {
 
   // Modals
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [editingTask, setEditingTask] = useState<TaskWithStartDate | null>(null);
 
   // Form fields
   const [formTitle, setFormTitle] = useState('');
@@ -35,6 +45,7 @@ const TasksPage: React.FC<TasksPageProps> = ({ currentUser }) => {
   const [formPriority, setFormPriority] = useState<'Low' | 'Medium' | 'High'>('Medium');
   const [formStatus, setFormStatus] = useState<'Pending' | 'In Progress' | 'Completed'>('Pending');
   const [formDueDate, setFormDueDate] = useState('');
+  const [formStartDate, setFormStartDate] = useState('');
   const [formProjectId, setFormProjectId] = useState<number | ''>('');
   const [formDepartmentId, setFormDepartmentId] = useState<number | ''>('');
   const [formSubmitting, setFormSubmitting] = useState(false);
@@ -103,12 +114,13 @@ const TasksPage: React.FC<TasksPageProps> = ({ currentUser }) => {
     setFormPriority('Medium');
     setFormStatus('Pending');
     setFormDueDate('');
+    setFormStartDate('');
     setFormProjectId('');
     setFormDepartmentId('');
     setIsModalOpen(true);
   };
 
-  const openEditModal = (task: Task) => {
+  const openEditModal = (task: TaskWithStartDate) => {
     setEditingTask(task);
     setFormTitle(task.title);
     setFormDescription(task.description || '');
@@ -116,6 +128,7 @@ const TasksPage: React.FC<TasksPageProps> = ({ currentUser }) => {
     setFormPriority(task.priority);
     setFormStatus(task.status);
     setFormDueDate(task.due_date || '');
+    setFormStartDate(task.start_date || '');
     setFormProjectId((task as any).projectId || '');
     setFormDepartmentId((task as any).departmentId || '');
     setIsModalOpen(true);
@@ -136,6 +149,7 @@ const TasksPage: React.FC<TasksPageProps> = ({ currentUser }) => {
       priority: formPriority,
       status: formStatus,
       due_date: formDueDate || null,
+      start_date: formStartDate || null,
       projectId: formProjectId || null,
       departmentId: formDepartmentId || null,
     };
@@ -540,6 +554,16 @@ const TasksPage: React.FC<TasksPageProps> = ({ currentUser }) => {
                       </div>
                     )}
 
+                    {/* Start Date */}
+                    {task.start_date && (
+                      <div className="flex items-center justify-between text-slate-400 font-medium">
+                        <span>Start Date:</span>
+                        <strong className="text-slate-300">
+                          {task.start_date}
+                        </strong>
+                      </div>
+                    )}
+
                     {/* Due Date */}
                     {task.due_date && (
                       <div className="flex items-center justify-between text-slate-400 font-medium">
@@ -706,15 +730,36 @@ const TasksPage: React.FC<TasksPageProps> = ({ currentUser }) => {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[11px] text-slate-400 mb-1">Due Date</label>
-                  <input
-                    type="date"
-                    value={formDueDate}
-                    onChange={(e) => setFormDueDate(e.target.value)}
-                    className="w-full bg-[#050912] border border-[#172740] text-slate-100 px-3.5 py-2.5 rounded-lg focus:outline-none focus:border-blue-500 font-sans"
-                  />
-                </div>
+
+              {/* Start Date */}
+              <div>
+                <label className="block text-[11px] text-slate-400 mb-1">
+                  Start Date
+                </label>
+
+                <input
+                  type="date"
+                  value={formStartDate}
+                  onChange={(e) => setFormStartDate(e.target.value)}
+                  className="w-full bg-[#050912] border border-[#172740] text-slate-100 px-3.5 py-2.5 rounded-lg focus:outline-none focus:border-blue-500 font-sans"
+                />
+              </div>
+
+              {/* Due Date */}
+              <div>
+                <label className="block text-[11px] text-slate-400 mb-1">
+                  Due Date
+                </label>
+
+                <input
+                  type="date"
+                  value={formDueDate}
+                  onChange={(e) => setFormDueDate(e.target.value)}
+                  className="w-full bg-[#050912] border border-[#172740] text-slate-100 px-3.5 py-2.5 rounded-lg focus:outline-none focus:border-blue-500 font-sans"
+                />
+              </div>
+
+              </div>
 
                 {editingTask && (
                   <div>
@@ -728,7 +773,6 @@ const TasksPage: React.FC<TasksPageProps> = ({ currentUser }) => {
                     </select>
                   </div>
                 )}
-              </div>
 
               <button
                 type="submit"
