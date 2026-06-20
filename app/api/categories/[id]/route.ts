@@ -4,12 +4,7 @@ import { cookies } from 'next/headers';
 import { sessionOptions, SessionData } from '@/lib/session';
 import sql from '@/lib/db';
 
-interface RouteParams {
-  params: Promise<{ id: string }>;
-}
-
-// PATCH /api/categories/[id] — Admin only: update category
-export async function PATCH(request: Request, { params }: RouteParams) {
+export async function GET() {
   try {
     const cookieStore = await cookies();
     const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
@@ -18,54 +13,26 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Query DB for user's actual role to prevent stale session 403s
-    const dbUser = await sql`
-      SELECT role FROM users WHERE id = ${session.userId} LIMIT 1
-    `;
-    const userRole = dbUser[0]?.role || session.role;
-
-    if (userRole !== 'Admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-    }
-
-    const { id } = await params;
-    const { name, description } = await request.json();
-
-    if (!name) {
-      return NextResponse.json({ error: 'Category name is required' }, { status: 400 });
-    }
-
-    // Check duplicate name
-    const existing = await sql`
-      SELECT id FROM credential_categories 
-      WHERE LOWER(name) = ${name.toLowerCase().trim()} AND id != ${Number(id)} 
-      LIMIT 1
+    const clients = await sql`
+      SELECT 
+        id, 
+        client_name AS "clientName", 
+        start_date AS "startDate", 
+        end_date AS "endDate", 
+        reason, 
+        created_at AS "createdAt"
+      FROM clients
+      ORDER BY created_at DESC
     `;
 
-    if (existing.length > 0) {
-      return NextResponse.json({ error: 'A category with this name already exists.' }, { status: 409 });
-    }
-
-    const result = await sql`
-      UPDATE credential_categories
-      SET name = ${name.trim()}, description = ${description || null}
-      WHERE id = ${Number(id)}
-      RETURNING id, name, description, created_at
-    `;
-
-    if (result.length === 0) {
-      return NextResponse.json({ error: 'Category not found' }, { status: 404 });
-    }
-
-    return NextResponse.json({ success: true, category: result[0] });
+    return NextResponse.json({ clients });
   } catch (error) {
-    console.error('[Category PATCH Error]', error);
-    return NextResponse.json({ error: 'Failed to update category' }, { status: 500 });
+    console.error('[Clients GET Error]', error);
+    return NextResponse.json({ error: 'Failed to fetch clients' }, { status: 500 });
   }
 }
 
-// DELETE /api/categories/[id] — Admin only: remove category
-export async function DELETE(request: Request, { params }: RouteParams) {
+export async function POST(request: Request) {
   try {
     const cookieStore = await cookies();
     const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
@@ -74,47 +41,27 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Query DB for user's actual role to prevent stale session 403s
-    const dbUser = await sql`
-      SELECT role FROM users WHERE id = ${session.userId} LIMIT 1
-    `;
-    const userRole = dbUser[0]?.role || session.role;
+    const { clientName, startDate, endDate, reason } = await request.json();
 
-    if (userRole !== 'Admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    if (!clientName || !startDate || !endDate || !reason) {
+      return NextResponse.json({ error: 'All fields are required' }, { status: 400 });
     }
 
-    const { id } = await params;
-    const categoryId = Number(id);
-
-    // Check if category is used by any credentials
-    const credentialsUsing = await sql`
-      SELECT id FROM credentials WHERE category_id = ${categoryId} LIMIT 1
-    `;
-
-    if (credentialsUsing.length > 0) {
-      return NextResponse.json(
-        { error: 'Cannot delete category: it is referenced by existing credentials.' },
-        { status: 400 }
-      );
-    }
-
-    // Remove associated user permissions first
-    await sql`DELETE FROM user_permissions WHERE category_id = ${categoryId}`;
-    
-    // Delete category
     const result = await sql`
-      DELETE FROM credential_categories WHERE id = ${categoryId}
-      RETURNING id
+      INSERT INTO clients (client_name, start_date, end_date, reason)
+      VALUES (${clientName.trim()}, ${startDate}, ${endDate}, ${reason.trim()})
+      RETURNING 
+        id, 
+        client_name AS "clientName", 
+        start_date AS "startDate", 
+        end_date AS "endDate", 
+        reason, 
+        created_at AS "createdAt"
     `;
 
-    if (result.length === 0) {
-      return NextResponse.json({ error: 'Category not found' }, { status: 404 });
-    }
-
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, client: result[0] });
   } catch (error) {
-    console.error('[Category DELETE Error]', error);
-    return NextResponse.json({ error: 'Failed to delete category' }, { status: 500 });
+    console.error('[Clients POST Error]', error);
+    return NextResponse.json({ error: 'Failed to create client' }, { status: 500 });
   }
 }
