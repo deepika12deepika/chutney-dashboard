@@ -1914,7 +1914,7 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({ currentUser }) => {
             ⚡
           </div>
         </div>
-        <div className="p-5 bg-gradient-to-br from-[#064e3b]/40 to-[#0f172a] border border-[#059669]/20 rounded-xl flex justify-between items-center shadow-lg">
+        <div className="p-5 bg-linear-to-br from-[#064e3b]/40 to-[#0f172a] border border-[#059669]/20 rounded-xl flex justify-between items-center shadow-lg">
           <div className="flex flex-col">
             <span className="text-[32px] font-bold text-white leading-tight font-mono">{completedProjects}</span>
             <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 mt-1">Completed Projects</span>
