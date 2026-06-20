@@ -12,6 +12,7 @@ import DashboardPage from './components/DashboardPage';
 import CategoriesPage from './components/CategoriesPage';
 import ClientsPage from './components/ClientsPage';
 import NewsPage from './components/NewsPage';
+import ProjectsPage from './components/ProjectsPage';
 import { SessionUser } from './types/credential';
 
 export default function Home() {
@@ -86,6 +87,8 @@ export default function Home() {
     switch (activeTab) {
       case 'dashboard':
         return <DashboardPage currentUser={currentUser} onSelectTab={setActiveTab} />;
+      case 'projects':
+        return <ProjectsPage currentUser={currentUser} />;
       case 'credentials':
         return <CredentialsPage currentUser={currentUser} />;
       case 'tasks':

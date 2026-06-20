@@ -50,6 +50,8 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       const priority = body.priority !== undefined ? body.priority : task.priority;
       const status = body.status !== undefined ? body.status : task.status;
       const due_date = body.due_date !== undefined ? (body.due_date ? new Date(body.due_date) : null) : task.due_date;
+      const projectId = body.projectId !== undefined ? (body.projectId ? Number(body.projectId) : null) : task.project_id;
+      const departmentId = body.departmentId !== undefined ? (body.departmentId ? Number(body.departmentId) : null) : task.department_id;
 
       let completed_at = task.completed_at;
       if (status === 'Completed' && task.status !== 'Completed') {
@@ -67,7 +69,9 @@ export async function PATCH(request: Request, { params }: RouteParams) {
           priority = ${priority},
           status = ${status},
           due_date = ${due_date},
-          completed_at = ${completed_at}
+          completed_at = ${completed_at},
+          project_id = ${projectId},
+          department_id = ${departmentId}
         WHERE id = ${taskId}
         RETURNING *
       `;
