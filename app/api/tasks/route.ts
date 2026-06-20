@@ -32,10 +32,16 @@ export async function GET() {
           t.created_at AS "created_at",
           t.completed_at AS "completed_at",
           u_to.name AS "assigned_to_name",
-          u_by.name AS "assigned_by_name"
+          u_by.name AS "assigned_by_name",
+          t.project_id AS "projectId",
+          t.department_id AS "departmentId",
+          p.project_name AS "projectName",
+          pd.department_name AS "departmentName"
         FROM tasks t
         LEFT JOIN users u_to ON t.assigned_to = u_to.id
         LEFT JOIN users u_by ON t.assigned_by = u_by.id
+        LEFT JOIN projects p ON t.project_id = p.id
+        LEFT JOIN project_departments pd ON t.department_id = pd.id
         ORDER BY t.created_at DESC
       `;
     } else {
@@ -46,10 +52,16 @@ export async function GET() {
           t.created_at AS "created_at",
           t.completed_at AS "completed_at",
           u_to.name AS "assigned_to_name",
-          u_by.name AS "assigned_by_name"
+          u_by.name AS "assigned_by_name",
+          t.project_id AS "projectId",
+          t.department_id AS "departmentId",
+          p.project_name AS "projectName",
+          pd.department_name AS "departmentName"
         FROM tasks t
         LEFT JOIN users u_to ON t.assigned_to = u_to.id
         LEFT JOIN users u_by ON t.assigned_by = u_by.id
+        LEFT JOIN projects p ON t.project_id = p.id
+        LEFT JOIN project_departments pd ON t.department_id = pd.id
         WHERE t.assigned_to = ${session.userId}
         ORDER BY t.created_at DESC
       `;
@@ -82,7 +94,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    const { title, description, assigned_to, priority, due_date } = await request.json();
+    const { title, description, assigned_to, priority, due_date, projectId, departmentId } = await request.json();
 
     if (!title || !assigned_to || !priority) {
       return NextResponse.json(
@@ -93,7 +105,7 @@ export async function POST(request: Request) {
 
     // Insert task into DB
     const result = await sql`
-      INSERT INTO tasks (title, description, assigned_to, assigned_by, priority, due_date, status)
+      INSERT INTO tasks (title, description, assigned_to, assigned_by, priority, due_date, status, project_id, department_id)
       VALUES (
         ${title},
         ${description || null},
@@ -101,9 +113,11 @@ export async function POST(request: Request) {
         ${session.userId},
         ${priority},
         ${due_date ? new Date(due_date) : null},
-        'Pending'
+        'Pending',
+        ${projectId ? Number(projectId) : null},
+        ${departmentId ? Number(departmentId) : null}
       )
-      RETURNING id, title, description, assigned_to, assigned_by, status, priority, created_at, completed_at
+      RETURNING id, title, description, assigned_to, assigned_by, status, priority, created_at, completed_at, project_id AS "projectId", department_id AS "departmentId"
     `;
 
     const task = result[0];

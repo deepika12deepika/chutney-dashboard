@@ -13,6 +13,8 @@ const STATUSES = ['Pending', 'In Progress', 'Completed'] as const;
 const TasksPage: React.FC<TasksPageProps> = ({ currentUser }) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Filters
@@ -20,6 +22,7 @@ const TasksPage: React.FC<TasksPageProps> = ({ currentUser }) => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [employeeFilter, setEmployeeFilter] = useState<string>('all');
+  const [projectFilter, setProjectFilter] = useState<string>('all');
 
   // Modals
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -32,6 +35,8 @@ const TasksPage: React.FC<TasksPageProps> = ({ currentUser }) => {
   const [formPriority, setFormPriority] = useState<'Low' | 'Medium' | 'High'>('Medium');
   const [formStatus, setFormStatus] = useState<'Pending' | 'In Progress' | 'Completed'>('Pending');
   const [formDueDate, setFormDueDate] = useState('');
+  const [formProjectId, setFormProjectId] = useState<number | ''>('');
+  const [formDepartmentId, setFormDepartmentId] = useState<number | ''>('');
   const [formSubmitting, setFormSubmitting] = useState(false);
 
   // Toast
@@ -49,7 +54,7 @@ const TasksPage: React.FC<TasksPageProps> = ({ currentUser }) => {
   const fetchAllData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const endpoints = [fetch('/api/tasks')];
+      const endpoints = [fetch('/api/tasks'), fetch('/api/projects')];
       if (isAdmin) {
         endpoints.push(fetch('/api/employees'));
       }
@@ -57,8 +62,11 @@ const TasksPage: React.FC<TasksPageProps> = ({ currentUser }) => {
       const tasksData = await responses[0].json();
       setTasks(tasksData.tasks || []);
 
-      if (isAdmin && responses[1]) {
-        const empData = await responses[1].json();
+      const projectsData = await responses[1].json();
+      setProjects(projectsData.projects || []);
+
+      if (isAdmin && responses[2]) {
+        const empData = await responses[2].json();
         setEmployees(empData.employees || []);
       }
     } catch {
@@ -72,6 +80,21 @@ const TasksPage: React.FC<TasksPageProps> = ({ currentUser }) => {
     fetchAllData();
   }, [fetchAllData]);
 
+  // Load departments dynamically when formProjectId changes
+  useEffect(() => {
+    if (formProjectId) {
+      fetch(`/api/projects/${formProjectId}`)
+        .then((res) => res.json())
+        .then((data) => {
+          setDepartments(data.departments || []);
+        })
+        .catch(() => setDepartments([]));
+    } else {
+      setDepartments([]);
+      setFormDepartmentId('');
+    }
+  }, [formProjectId]);
+
   const openAddModal = () => {
     setEditingTask(null);
     setFormTitle('');
@@ -80,6 +103,8 @@ const TasksPage: React.FC<TasksPageProps> = ({ currentUser }) => {
     setFormPriority('Medium');
     setFormStatus('Pending');
     setFormDueDate('');
+    setFormProjectId('');
+    setFormDepartmentId('');
     setIsModalOpen(true);
   };
 
@@ -91,6 +116,8 @@ const TasksPage: React.FC<TasksPageProps> = ({ currentUser }) => {
     setFormPriority(task.priority);
     setFormStatus(task.status);
     setFormDueDate(task.due_date || '');
+    setFormProjectId((task as any).projectId || '');
+    setFormDepartmentId((task as any).departmentId || '');
     setIsModalOpen(true);
   };
 
@@ -109,6 +136,8 @@ const TasksPage: React.FC<TasksPageProps> = ({ currentUser }) => {
       priority: formPriority,
       status: formStatus,
       due_date: formDueDate || null,
+      projectId: formProjectId || null,
+      departmentId: formDepartmentId || null,
     };
 
     try {
@@ -210,8 +239,10 @@ const TasksPage: React.FC<TasksPageProps> = ({ currentUser }) => {
     const matchesStatus = statusFilter === 'all' || t.status === statusFilter;
     const matchesPriority = priorityFilter === 'all' || t.priority === priorityFilter;
     const matchesEmployee = employeeFilter === 'all' || String(t.assigned_to) === employeeFilter;
+    const matchesProject = projectFilter === 'all' ||
+      (projectFilter === 'general' ? !t.projectId : String(t.projectId) === projectFilter);
 
-    return matchesSearch && matchesStatus && matchesPriority && matchesEmployee;
+    return matchesSearch && matchesStatus && matchesPriority && matchesEmployee && matchesProject;
   });
 
   const getPriorityStyle = (p: string) => {
@@ -399,6 +430,19 @@ const TasksPage: React.FC<TasksPageProps> = ({ currentUser }) => {
               {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
             </select>
 
+            {/* Project select filter */}
+            <select
+              value={projectFilter}
+              onChange={(e) => setProjectFilter(e.target.value)}
+              className="px-3 py-1.5 text-[11px] bg-[#050912] border border-[#172740] rounded-lg text-slate-300 focus:outline-none cursor-pointer hover:border-slate-700 transition-colors font-medium"
+            >
+              <option value="all">All Projects</option>
+              <option value="general">General Tasks</option>
+              {projects.map((proj) => (
+                <option key={proj.id} value={String(proj.id)}>{proj.projectName}</option>
+              ))}
+            </select>
+
             {/* Employee filter — Admin only */}
             {isAdmin && (
               <select
@@ -407,7 +451,7 @@ const TasksPage: React.FC<TasksPageProps> = ({ currentUser }) => {
                 className="px-3 py-1.5 text-[11px] bg-[#050912] border border-[#172740] rounded-lg text-slate-300 focus:outline-none cursor-pointer hover:border-slate-700 transition-colors font-medium"
               >
                 <option value="all">All Employees</option>
-                {employees.map((emp) => <option key={emp.id} value={String(emp.id)}>{emp.name}</option>)}
+                {employees.map((emp) => <option key={emp.id} value={String(emp.id)}>{emp.name} — {emp.work || emp.role}</option>)}
               </select>
             )}
           </div>
@@ -464,6 +508,21 @@ const TasksPage: React.FC<TasksPageProps> = ({ currentUser }) => {
                     </p>
                   )}
 
+                  {((task as any).projectName || (task as any).departmentName) && (
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {(task as any).projectName && (
+                        <span className="text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded px-2 py-0.5">
+                          📁 {(task as any).projectName}
+                        </span>
+                      )}
+                      {(task as any).departmentName && (
+                        <span className="text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700/50 rounded px-2 py-0.5">
+                          🏷️ {(task as any).departmentName}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   <div className="mt-4 space-y-2 pt-3 border-t border-[#111c2e] text-xs">
                     {/* Assigned Info */}
                     {isAdmin && (
@@ -496,7 +555,14 @@ const TasksPage: React.FC<TasksPageProps> = ({ currentUser }) => {
                       <div className="flex items-center justify-between text-slate-400 font-medium">
                         <span>Completed At:</span>
                         <strong className="text-emerald-400">
-                          {new Date(task.completed_at).toLocaleDateString()}
+                          {new Date(task.completed_at).toLocaleString('en-GB', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false
+                          }).replace(',', '')}
                         </strong>
                       </div>
                     )}
@@ -567,6 +633,41 @@ const TasksPage: React.FC<TasksPageProps> = ({ currentUser }) => {
                 />
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[11px] text-slate-400 mb-1">Project</label>
+                  <select
+                    value={formProjectId}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setFormProjectId(val ? Number(val) : '');
+                      setFormDepartmentId('');
+                    }}
+                    className="w-full bg-[#050912] border border-[#172740] text-slate-200 px-3 py-2.5 rounded-lg focus:outline-none focus:border-blue-500 cursor-pointer font-sans"
+                  >
+                    <option value="">General Task</option>
+                    {projects.map((p) => (
+                      <option key={p.id} value={p.id}>{p.projectName}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] text-slate-400 mb-1">Project Department</label>
+                  <select
+                    value={formDepartmentId}
+                    disabled={!formProjectId}
+                    onChange={(e) => setFormDepartmentId(e.target.value ? Number(e.target.value) : '')}
+                    className="w-full bg-[#050912] border border-[#172740] text-slate-200 px-3 py-2.5 rounded-lg focus:outline-none focus:border-blue-500 cursor-pointer font-sans disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <option value="">Choose department...</option>
+                    {departments.map((d) => (
+                      <option key={d.id} value={d.id}>{d.departmentName}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-[11px] text-slate-400 mb-1">Description</label>
                 <textarea
@@ -587,7 +688,7 @@ const TasksPage: React.FC<TasksPageProps> = ({ currentUser }) => {
                     className="w-full bg-[#050912] border border-[#172740] text-slate-200 px-3 py-2.5 rounded-lg focus:outline-none focus:border-blue-500 cursor-pointer font-sans"
                   >
                     {employees.map((emp) => (
-                      <option key={emp.id} value={emp.id}>{emp.name} ({emp.role})</option>
+                      <option key={emp.id} value={emp.id}>{emp.name} — {emp.work || emp.role}</option>
                     ))}
                   </select>
                 </div>

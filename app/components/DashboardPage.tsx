@@ -11,6 +11,7 @@ interface DashboardPageProps {
 const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onSelectTab }) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const isAdmin = currentUser.role === 'Admin';
@@ -18,16 +19,19 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onSelectTab 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [tasksRes, notificationsRes] = await Promise.all([
+      const [tasksRes, notificationsRes, projectsRes] = await Promise.all([
         fetch('/api/tasks'),
-        fetch('/api/notifications')
+        fetch('/api/notifications'),
+        fetch('/api/projects')
       ]);
       
       const tasksData = await tasksRes.json();
       const notificationsData = await notificationsRes.json();
+      const projectsData = await projectsRes.json();
       
       setTasks(tasksData.tasks || []);
       setNotifications(notificationsData.notifications || []);
+      setProjects(projectsData.projects || []);
     } catch (err) {
       console.error('Failed to load dashboard data', err);
     } finally {
@@ -46,6 +50,16 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onSelectTab 
   const pendingTasks = tasks.filter((t) => t.status === 'Pending').length;
   const inProgressTasks = tasks.filter((t) => t.status === 'In Progress').length;
   const completedTasks = tasks.filter((t) => t.status === 'Completed').length;
+
+  const activeProjects = projects.filter(p => p.status === 'Active').length;
+  const completedProjects = projects.filter(p => p.status === 'Completed').length;
+  const projectsDueThisWeek = projects.filter(p => {
+    if (!p.endDate) return false;
+    const diffTime = new Date(p.endDate).getTime() - new Date().getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays >= 0 && diffDays <= 7;
+  }).length;
+  const pendingDeliverables = projects.reduce((sum, p) => sum + Number(p.pendingDeliverablesCount || 0), 0);
   
   const overdueTasks = tasks.filter((t) => {
     if (t.status === 'Completed' || !t.due_date) return false;
@@ -76,7 +90,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onSelectTab 
   return (
     <div className="flex-1 bg-[#060814] h-[calc(100vh-4rem)] p-8 text-slate-100 overflow-y-auto flex flex-col relative select-none">
       {/* Welcome banner */}
-      <div className="mb-8 p-6 bg-gradient-to-r from-[#091024] via-[#0b1430] to-[#070e24] rounded-2xl border border-[#16254a]/30 shadow-lg relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="mb-8 p-6 bg-gradient-to-r from-[#111726]/95 via-[#18233c]/95 to-[#111726]/95 rounded-2xl border border-blue-500/30 shadow-[0_4px_30px_rgba(0,0,0,0.3)] relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
         <div className="relative z-10">
           <h1 className="text-[24px] font-bold text-white tracking-[0.2px]">
             {getGreeting()}, {currentUser.name}!
@@ -112,6 +126,53 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onSelectTab 
         </div>
       ) : (
         <>
+          {/* Projects Metrics Section */}
+          <div className="mb-8">
+            <h2 className="text-[15px] font-bold uppercase tracking-wider text-slate-400 mb-4">Projects Dashboard</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Active Projects */}
+              <div className="p-5 bg-gradient-to-br from-[#1e293b] to-[#0f172a] border border-[#1e293b] rounded-xl flex justify-between items-center shadow-md cursor-pointer hover:border-blue-500/20 transition-colors" onClick={() => onSelectTab('projects')}>
+                <div className="flex flex-col">
+                  <span className="text-[30px] font-bold text-white leading-tight font-mono">{activeProjects}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-400 mt-1">Active Projects</span>
+                </div>
+                <div className="w-11 h-11 bg-blue-500/10 border border-blue-500/25 rounded-lg flex items-center justify-center text-blue-400 shrink-0">
+                  ⚡
+                </div>
+              </div>
+              {/* Completed Projects */}
+              <div className="p-5 bg-gradient-to-br from-[#1e293b] to-[#0f172a] border border-[#1e293b] rounded-xl flex justify-between items-center shadow-md cursor-pointer hover:border-emerald-500/20 transition-colors" onClick={() => onSelectTab('projects')}>
+                <div className="flex flex-col">
+                  <span className="text-[30px] font-bold text-white leading-tight font-mono">{completedProjects}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 mt-1">Completed Projects</span>
+                </div>
+                <div className="w-11 h-11 bg-emerald-500/10 border border-emerald-500/25 rounded-lg flex items-center justify-center text-emerald-400 shrink-0">
+                  ✅
+                </div>
+              </div>
+              {/* Projects Due This Week */}
+              <div className="p-5 bg-gradient-to-br from-[#1e293b] to-[#0f172a] border border-[#1e293b] rounded-xl flex justify-between items-center shadow-md cursor-pointer hover:border-amber-500/20 transition-colors" onClick={() => onSelectTab('projects')}>
+                <div className="flex flex-col">
+                  <span className="text-[30px] font-bold text-white leading-tight font-mono">{projectsDueThisWeek}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 mt-1">Due This Week</span>
+                </div>
+                <div className="w-11 h-11 bg-amber-500/10 border border-amber-500/25 rounded-lg flex items-center justify-center text-amber-400 shrink-0">
+                  📅
+                </div>
+              </div>
+              {/* Pending Deliverables */}
+              <div className="p-5 bg-gradient-to-br from-[#1e293b] to-[#0f172a] border border-[#1e293b] rounded-xl flex justify-between items-center shadow-md cursor-pointer hover:border-rose-500/20 transition-colors" onClick={() => onSelectTab('projects')}>
+                <div className="flex flex-col">
+                  <span className="text-[30px] font-bold text-white leading-tight font-mono">{pendingDeliverables}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-rose-400 mt-1">Pending Deliverables</span>
+                </div>
+                <div className="w-11 h-11 bg-rose-500/10 border border-rose-500/25 rounded-lg flex items-center justify-center text-rose-400 shrink-0">
+                  📦
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Metrics Section */}
           <div className="mb-8">
             <h2 className="text-[15px] font-bold uppercase tracking-wider text-slate-400 mb-4">Task Dashboard</h2>
@@ -213,6 +274,16 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onSelectTab 
             <div className="bg-[#09101f] border border-[#16253d] rounded-xl p-6 shadow-lg">
               <h3 className="text-[14.5px] font-bold text-white mb-4">Operations Overview</h3>
               <div className="space-y-4">
+                <div className="flex items-start gap-3.5 p-3 rounded-lg bg-[#050912] border border-[#111c2e] hover:border-[#1c2e4d] transition-all cursor-pointer" onClick={() => onSelectTab('projects')}>
+                  <div className="w-9 h-9 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0 font-bold">📁</div>
+                  <div className="min-w-0">
+                    <h4 className="text-[13px] font-bold text-white leading-snug">Projects Dashboard</h4>
+                    <p className="text-[11.5px] text-slate-500 mt-0.5 leading-relaxed">
+                      Deliverables tracking, timeline metrics, and team workloads.
+                    </p>
+                  </div>
+                </div>
+
                 <div className="flex items-start gap-3.5 p-3 rounded-lg bg-[#050912] border border-[#111c2e] hover:border-[#1c2e4d] transition-all cursor-pointer" onClick={() => onSelectTab('credentials')}>
                   <div className="w-9 h-9 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0 font-bold">🗝</div>
                   <div className="min-w-0">

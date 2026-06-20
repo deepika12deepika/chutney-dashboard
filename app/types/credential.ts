@@ -73,6 +73,10 @@ export interface Task {
   due_date?: string | null;
   created_at: string;
   completed_at?: string | null;
+  projectId?: number | null;
+  projectName?: string | null;
+  departmentId?: number | null;
+  departmentName?: string | null;
 }
 
 // ─── Notification (from /api/notifications) ──────────────────────────────────
